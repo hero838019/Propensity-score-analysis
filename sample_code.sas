@@ -1,17 +1,17 @@
 /*Set up the library where you store the datasets*/
-libname sas "C:\Users\henry\OneDrive\Desktop\Research\Programming\SAS\PS method workshop_2025\sample_output";
+libname sas "xxxxxx\sample_output";
 
 
 /***************************************************************************************************/
 /*Step 1: Calculating the Propensity Score with imputed data*/
-proc import datafile = "C:\Users\henry\OneDrive\Desktop\Research\Programming\SAS\PS method workshop_2025\sample_output\Data_dictionary_sample.xlsx"
+proc import datafile = "xxxxxx\Data_dictionary_sample.xlsx"
 	out = sas.cov dbms = xlsx replace;
 	getnames = yes;
 	sheet = "DEMO";
 run;
 
 
-proc import datafile = "C:\Users\henry\OneDrive\Desktop\Research\Programming\SAS\PS method workshop_2025\sample_output\sample_dataset.xlsx"
+proc import datafile = "xxxxxx\sample_dataset.xlsx"
 	out = sas.sample dbms = xlsx replace;
 	getnames = yes;
 	sheet = "sample";
@@ -84,15 +84,15 @@ proc freq data=sas.Sample_ps;
 run;
 
 /*For each treated unit, find the closest control (by PS distance)
-that hasnít yet been matched (and within caliper if specified)*/
+that hasn‚Äôt yet been matched (and within caliper if specified)*/
 
 
 proc psmatch data=sas.Sample region=cs;
    class &classcov.;
    psmodel EXPOSE= &categocov. &continucov.;
    match method=greedy(k=1) distance=lps caliper=0.2   
-   /*a caliper width of 0.2 ◊ SD of the logit(PS) is often recommended*/
-   /*ìlogit†PSî means take your propensity score p, form the odds p/(1-p),
+   /*a caliper width of 0.2 √ó SD of the logit(PS) is often recommended*/
+   /*‚Äúlogit¬†PS‚Äù means take your propensity score p, form the odds p/(1-p),
    and then take the natural log of that odds.*/
          weight=none;
    assess lps allcov;
