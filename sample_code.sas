@@ -3,8 +3,7 @@ libname sas "C:\Users\henry\OneDrive\Desktop\Research\Programming\SAS\PS method 
 
 
 /***************************************************************************************************/
-/* Step 1: Calculating the Propensity Score with imputed data */
-/* identify the categorical variables and binary variables to put in the "class" statement of logistic regression */
+/*Step 1: Calculating the Propensity Score with imputed data*/
 proc import datafile = "C:\Users\henry\OneDrive\Desktop\Research\Programming\SAS\PS method workshop_2025\sample_output\Data_dictionary_sample.xlsx"
 	out = sas.cov dbms = xlsx replace;
 	getnames = yes;
@@ -32,7 +31,7 @@ proc sql noprint; select distinct (variable_name) into :continucov separated by 
 
 
 
-/* Calculate Propensity score using logistic regression */
+/*Calculate Propensity score using logistic regression*/
 proc logistic data=sas.Sample descending;
 	class &classcov.;
 	model EXPOSE= &categocov. &continucov.;
@@ -41,7 +40,7 @@ run;
 
 
 /***************************************************************************************************/
-/* Step 2: check the distribution of PS before Matching/Weighting*/
+/*Step 2: check the distribution of PS before Matching/Weighting*/
 data ps_before_weighting; 
 	set sas.Sample_ps;
   exp_ps = .;
@@ -69,20 +68,17 @@ run;
 /* Step 3: Apply different PS methods */
 /**************************************/
 /***************************************************************************************************/
-/* Method 1:Covariate adjustment using PS */
+/*Method 1:Covariate adjustment using PS*/
 proc logistic data=sas.Sample_ps;
    class EXPOSE; 
    model MACE_OUTCOME = EXPOSE denom;
 run;
-/*Covariate adjustment using PS: OR ()*/
- 
+/*Covariate adjustment using PS: OR 0.824(0.709-0.956)*/
 
-/***************************************************************************************************/
-/* Method 2:PS Stratification*/
 
 
 /***************************************************************************************************/
-/* Method 3-1:PS matching-Greedy (Nearest Neighbor) Matching*/
+/*Method 2:PS matching-Greedy (Nearest Neighbor) Matching*/
 proc freq data=sas.Sample_ps;
 	tables EXPOSE;
 run;
@@ -114,13 +110,12 @@ proc logistic data=Final_dataset_ps_greedy_match_m;
    model MACE_OUTCOME = EXPOSE;
    strata _MatchID;
 run;
-/*Greedy matching: OR (-)*/
-
+/*Greedy matching: OR 0.853(0.723-1.006)*/
 
 
 /***************************************************************************************************/
-/* Method 4-1:Inverse probability of treatment weighting (IPTW)*/
-/* Generate inverse propensity score weights */
+/*Method 3:Inverse probability of treatment weighting (IPTW)*/
+/*Generate inverse propensity score weights */
 proc logistic data=sas.Sample_ps descending;
 	model EXPOSE=;
 	output out=stable_ps p=num;
@@ -150,11 +145,11 @@ proc logistic data = Final_dataset_ps_iptw;
    	model MACE_OUTCOME = EXPOSE;
 	weight uw;
 run;
-/*Unstabilized IP weighting without truncation: OR 1.399(1.004-1.947)*/
+/*Unstabilized IP weighting without truncation: OR 0.789(0.721-0.862)*/
 
 
 *** Truncate stabilized weights at the 1th and 99th percentile ***;
-* Extract 1th and 99th percentile of stabilized weights;
+*Extract 1th and 99th percentile of stabilized weights;
 proc univariate data = Final_dataset_ps_iptw noprint;
 	var sw;
 	output out=pctl pctlpts=1 99 pctlpre=p;
@@ -185,7 +180,7 @@ proc means data = Final_dataset_ps_sw_1_99 min p5 median mean p95 std max;
 run;
 
 
-/* Check the distribution of PS after stabilized IP Weighting*/
+/*Check the distribution of PS after stabilized IP Weighting*/
 data ps_after_sw; 
 	set Final_dataset_ps_sw_1_99;
   exp_ps = .;
@@ -214,12 +209,12 @@ proc logistic data = Final_dataset_ps_sw_1_99;
    	model MACE_OUTCOME= EXPOSE;
 	weight sw_p1_99;
 run;
-/*Stabilized IP weighting with truncation: OR 1.403(0.609-3.233)*/
+/*Stabilized IP weighting with truncation: OR 0.793(0.695-0.904)*/
 
 
 
 /***************************************************************************************************/
-/* Method 4-1: Standardized mortality ratio weighting (SMRW)*/
+/*Method 4-1: Standardized mortality ratio weighting (SMRW)*/
 
 data Final_dataset_ps_smrw;
 	set sas.Sample_ps;
@@ -233,7 +228,7 @@ run;
 
 
 *** Truncate weights at the 1th and 99th percentile ***;
-* Extract 5th and 95th percentile of SMR weights;
+*Extract 5th and 95th percentile of SMR weights;
 proc univariate data = Final_dataset_ps_smrw noprint;
 	var smrw;
 	output out=pctl pctlpts=1 99 pctlpre=p;
@@ -247,7 +242,7 @@ data temp3;
 run;
 
 
-* Truncate weights at the 1th and 99th percentile;
+*Truncate weights at the 1th and 99th percentile;
 data Final_dataset_ps_smrw_1_99;
 	set Final_dataset_ps_smrw;
 	smrw_p1_99 = smrw;
@@ -263,13 +258,15 @@ run;
 proc means data = Final_dataset_ps_smrw_1_99 min p5 median mean p95 std max;
 	var smrw_p1_99;
 run;
+
+
 *** Fit logistic regression model with truncated weights ***;	
 proc logistic data = Final_dataset_ps_smrw_1_99;
    	class EXPOSE(ref="0") MACE_OUTCOME(ref="0");
    	model MACE_OUTCOME = EXPOSE;
 	weight smrw_p1_99;
 run;
-/*Standardized mortality ratio weighting: OR 1.266(0.832-1.928)*/
+/*Standardized mortality ratio weighting: OR 0.830(0.720-0.958)*/
 
 
-
+ 
